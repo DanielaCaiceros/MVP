@@ -26,6 +26,7 @@ struct DashboardView: View {
                         Text("Resumen")
                             .font(.largeTitle)
                             .fontWeight(.bold)
+                            .foregroundStyle(mainColor)
                     }
                     Spacer()
                     

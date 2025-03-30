@@ -29,7 +29,7 @@ struct BookListView: View {
                     .tabItem { Label("Account", systemImage: "person.fill") }
                     .tag(2)
             }
-            .accentColor(.blue)
+            .accentColor(mainColor)
             .navigationDestination(item: $selectedBook) { book in
                 BookDetailView(book: book)
             }
@@ -62,6 +62,7 @@ struct BookListView: View {
         HStack {
             Text("Home")
                 .font(.largeTitle).bold()
+                .foregroundStyle(mainColor)
             Spacer()
             userStatus
         }

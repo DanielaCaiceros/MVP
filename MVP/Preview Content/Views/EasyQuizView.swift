@@ -75,7 +75,7 @@ struct EasyQuizView: View {
                                     Text("Continuar leyendo")
                                         .padding()
                                         .frame(maxWidth: .infinity)
-                                        .background(Color.blue)
+                                        .background(mainColor)
                                         .foregroundColor(.white)
                                         .cornerRadius(15)
                                 }

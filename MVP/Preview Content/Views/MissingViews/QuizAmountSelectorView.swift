@@ -16,7 +16,7 @@ struct QuizAmountSelectorView: View {
             Text("How many quizzes do you want to solve?")
                 .font(.title2)
                 .multilineTextAlignment(.center)
-            
+            Spacer()
             HStack {
                 QuizAdjustButton(systemImage: "minus") {
                     quizAmount = max(1, quizAmount - 1)
@@ -24,19 +24,20 @@ struct QuizAmountSelectorView: View {
                 
                 Text("\(quizAmount)")
                     .font(.system(size: 80, weight: .bold))
+                    .foregroundStyle(mainColor)
                     .padding(.horizontal)
                 
                 QuizAdjustButton(systemImage: "plus") {
                     quizAmount = min(20, quizAmount + 1)
                 }
             }
-            
+            Spacer()
             Button {
                             onStart()
                             dismiss() // Cierra el selector
                         } label: {
                             Text("Start reading!")
-                                
+                                .foregroundStyle(mainColor)
                         }
         }
         .padding()
@@ -54,8 +55,7 @@ struct QuizAdjustButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: 40))
                 .padding(20)
-                .background(Color.blue.opacity(0.1))
-                .clipShape(Circle())
+                .foregroundStyle(mainColor)
         }
     }
 }
