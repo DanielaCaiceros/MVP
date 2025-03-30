@@ -1,36 +1,39 @@
 import SwiftUI
 import SwiftData
 
+import SwiftUI
+
 struct DashboardView: View {
-    @Environment(\.modelContext) private var modelContext
-    @StateObject private var viewModel: AnalyticsViewModel
-    
-    init(modelContext: ModelContext) {
-        _viewModel = StateObject(wrappedValue: AnalyticsViewModel(modelContext: modelContext))
-    }
+    // Datos mock para la vista
+    @State private var currentStreak: Int = 6
+    @State private var quizzesToday: Int = 3
+    @State private var wordsToday: Int = 2450
+    @State private var timeTodayMinutes: Int = 28
+    @State private var averageScorePercentage: Double = 82.5
+    @State private var totalQuizzes: Int = 27
+    @State private var showQuizDetail = false
+    @State private var showScoreDetail = false
     
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Header with date and profile
+                // Header
                 HStack {
                     VStack(alignment: .leading) {
-                        Text(formattedDate())
+                        Text(currentDateFormatted())
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text("Summary")
+                            .foregroundColor(.secondary)
+                        Text("Resumen")
                             .font(.largeTitle)
                             .fontWeight(.bold)
                     }
                     Spacer()
                     
-                    // Streak display with fire emoji
+                    // Racha actual
                     HStack(spacing: 4) {
-                        Text("\(viewModel.currentStreak)")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.orange)
+                        Text("\(currentStreak)")
+                            .fontWeight(.bold)
                         Text("🔥")
-                            .font(.system(size: 16))
                     }
                     .padding(8)
                     .background(
@@ -38,7 +41,7 @@ struct DashboardView: View {
                             .fill(Color.orange.opacity(0.2))
                     )
                     
-                    // Profile circle
+                    // Avatar de usuario
                     Circle()
                         .fill(Color.pink.opacity(0.7))
                         .frame(width: 40, height: 40)
@@ -49,375 +52,409 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal)
                 
-                // Activity Rings Card
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(UIColor.systemGray6))
-                    
-                    VStack(alignment: .leading, spacing: 15) {
-                        Text("Reading Rings")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .padding(.top, 10)
-                            //.padding(.bottom, 7.5)
-                            .padding(.horizontal)
-                        
-                        Divider()
-                            
-                        
-                        HStack(alignment: .center, spacing: 20) {
-                            //Spacer()
-                            // Activity rings visualization
-                            ZStack (alignment: .center){
-                                Circle()
-                                    .stroke(Color.red.opacity(0.3), lineWidth: 20)
-                                    .frame(width: 150, height: 150)
-                                Circle()
-                                    .trim(from: 0, to: min(CGFloat(viewModel.quizzesToday) / 5, 1))
-                                    .stroke(Color.red, lineWidth: 20)
-                                    .frame(width: 150, height: 150)
-                                    .rotationEffect(.degrees(-90))
-                                
-                                Circle()
-                                    .stroke(Color.green.opacity(0.3), lineWidth: 20)
-                                    .frame(width: 110, height: 110)
-                                Circle()
-                                    .trim(from: 0, to: min(CGFloat(viewModel.wordsToday) / 7500, 1))
-                                    .stroke(Color.green, lineWidth: 20)
-                                    .frame(width: 110, height: 110)
-                                    .rotationEffect(.degrees(-90))
-                                
-                                Circle()
-                                    .stroke(Color.blue.opacity(0.3), lineWidth: 20)
-                                    .frame(width: 70, height: 70)
-                                Circle()
-                                    .trim(from: 0, to: CGFloat(min(viewModel.timeTodayMinutes / 30, 1))) //7500 x 30 min
-                                    .stroke(Color.blue, lineWidth: 20)
-                                    .frame(width: 70, height: 70)
-                                    .rotationEffect(.degrees(-90))
-                            }
-                            .padding(.leading, 40)
-                            
-                            VStack(alignment: .leading, spacing: 5) {
-                                // Activity labels
-                                VStack(alignment: .leading) {
-                                    Text("Today Quizzes")
-                                        .font(.headline)
-                                    Text("\(viewModel.quizzesToday) / 5")
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.red)
-                                }
-                                
-                                VStack(alignment: .leading) {
-                                    
-                                    Text("Today Words")
-                                        .font(.headline)
-                                    Text("\(viewModel.wordsToday) / 7500")
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.green)
-                                }
-                                
-                                VStack(alignment: .leading) {
-                                    
-                                    Text("Today Minutes")
-                                        .font(.headline)
-                                    Text(String(format: "%.0f / 30", viewModel.timeTodayMinutes))
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.blue)
-                                }
-                            }
-                            .padding(.leading)
-                        }
-                        .padding(.bottom, 20)
-                    }
-                }
-                .padding(.horizontal)
+                // Anillos de actividad
+                activityRingsCard
                 
-                // Quizz Count and score Row
+                // Tarjetas de estadísticas
                 HStack(spacing: 16) {
-                    // Quizz count card - Ahora navegable
-                    NavigationLink {
-                        QuizCountDetailView(viewModel: viewModel)
-                            //.foregroundColor(.primary)
-                    } label: {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(UIColor.systemGray6))
-                            
-                            VStack(alignment: .leading) {
-                                HStack {
-                                    Text("Quizzes Count")
-                                        .font(.headline)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .foregroundColor(.green)
-                                }
-                                .padding(.horizontal)
-                                
-                                Divider()
-                                    .padding(.horizontal, 8)
-                                
-                                VStack(alignment: .leading) {
-                                    Text("All Time")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    Text("\(viewModel.quizzes.count)")
-                                        .font(.system(size: 35, weight: .bold))
-                                        .foregroundColor(.purple)
-                                }
-                                .padding(.horizontal)
-                                
-                                // Simple bar chart
-                                HStack(spacing: 3) {
-                                    ForEach(0..<24, id: \.self) { i in
-                                        Rectangle()
-                                            .fill(Color.gray.opacity(0.3))
-                                            .frame(width: 3, height: CGFloat.random(in: 2...20))
-                                    }
-                                }
-                                .padding(.horizontal)
-                                .padding(.top, 5)
-                                
-                                // Time indicators
-                                HStack {
-                                    Text("12a.m.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("6a.m.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("12p.m.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("6p.m.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal)
-                                .padding(.bottom, 5)
-                            }
-                        }
-                    }
-                    
-                    // Avg Score card - Ahora navegable
-                    NavigationLink {
-                        ScoreDetailView(viewModel: viewModel)
-                    } label: {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(UIColor.systemGray6))
-                            
-                            VStack(alignment: .leading) {
-                                HStack {
-                                    Text("Avg Score")
-                                        .font(.headline)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .foregroundColor(.green)
-                                }
-                                .padding(.horizontal)
-                                
-                                Divider()
-                                    .padding(.horizontal, 8)
-                                
-                                VStack(alignment: .leading) {
-                                    Text("All Time")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    Text(String(format: "%.2f", viewModel.averageScorePercentage) + "%")
-                                        .font(.system(size: 35, weight: .bold))
-                                        .foregroundColor(.cyan)
-                                }
-                                .padding(.horizontal)
-                                
-                                // Simple bar chart
-                                HStack(spacing: 2) {
-                                    ForEach(0..<24, id: \.self) { i in
-                                        Rectangle()
-                                            .fill(Color.gray.opacity(0.3))
-                                            .frame(width: 3, height: CGFloat.random(in: 2...20))
-                                    }
-                                }
-                                .padding(.horizontal)
-                                .padding(.top, 5)
-                                
-                                // Time indicators
-                                HStack {
-                                    Text("12a.m.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("6a.m.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("12p.m.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("6p.m.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal)
-                                .padding(.bottom, 5)
-                            }
-                        }
-                    }
+                    quizCountCard
+                    averageScoreCard
                 }
+                .padding(.horizontal)
                 .frame(height: 200)
-                .padding(.horizontal)
                 
-                // Fitness+ banner section
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(UIColor.systemGray6))
-                    
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Top section with logo
-                        HStack {
-                            Image(systemName: "brain.head.profile")
-                                .font(.title2)
-                            Text("Quiz+")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.green)
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 12)
-                        
-                        Spacer()
-                        
-                        // Recommended workout text
-                        Text("TRY A NEW CHALLENGE")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.green)
-                            .padding(.horizontal)
-                        
-                        Text("Word Challenge with Reading")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .padding(.horizontal)
-                        
-                        Text("15min • Difficult Level")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .padding(.horizontal)
-                            .padding(.bottom, 12)
-                    }
-                    
-                    // Placeholder for workout image
-                    HStack {
-                        Spacer()
-                        Image(systemName: "book.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.secondary)
-                            .padding(.trailing, 40)
-                    }
-                }
-                .frame(height: 200)
-                .padding(.horizontal)
-                
-                
-                .padding(.horizontal)
+                // Banner de desafío
+                challengeBanner
+                    .padding(.horizontal)
             }
+            .padding(.vertical)
         }
-        .background(Color(UIColor.systemBackground))
-        .task {
-            await viewModel.loadData()
+        .background(Color(.systemBackground))
+        .sheet(isPresented: $showQuizDetail) {
+            QuizStatsDetailView(stats: mockQuizStats)
+        }
+        .sheet(isPresented: $showScoreDetail) {
+            ScoreStatsDetailView(stats: mockScoreStats)
         }
     }
     
-    // Helper function to format today's date like "SATURDAY 29 MAR"
-    private func formattedDate() -> String {
+    // MARK: - Componentes
+    
+    private var activityRingsCard: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+            
+            VStack(alignment: .leading, spacing: 15) {
+                Text("Progreso Diario")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .padding(.top, 10)
+                    .padding(.horizontal)
+                
+                Divider()
+                
+                HStack(alignment: .center, spacing: 20) {
+                    // Anillos de actividad
+                    ZStack(alignment: .center) {
+                        // Anillo exterior (quizzes)
+                        Circle()
+                            .stroke(Color.red.opacity(0.3), lineWidth: 20)
+                            .frame(width: 150, height: 150)
+                        Circle()
+                            .trim(from: 0, to: min(CGFloat(quizzesToday) / 5, 1))
+                            .stroke(Color.red, lineWidth: 20)
+                            .frame(width: 150, height: 150)
+                            .rotationEffect(.degrees(-90))
+                        
+                        // Anillo medio (palabras)
+                        Circle()
+                            .stroke(Color.green.opacity(0.3), lineWidth: 20)
+                            .frame(width: 110, height: 110)
+                        Circle()
+                            .trim(from: 0, to: min(CGFloat(wordsToday) / 7500, 1))
+                            .stroke(Color.green, lineWidth: 20)
+                            .frame(width: 110, height: 110)
+                            .rotationEffect(.degrees(-90))
+                        
+                        // Anillo interior (tiempo)
+                        Circle()
+                            .stroke(Color.blue.opacity(0.3), lineWidth: 20)
+                            .frame(width: 70, height: 70)
+                        Circle()
+                            .trim(from: 0, to: min(CGFloat(timeTodayMinutes) / 30, 1))
+                            .stroke(Color.blue, lineWidth: 20)
+                            .frame(width: 70, height: 70)
+                            .rotationEffect(.degrees(-90))
+                    }
+                    .padding(.leading, 40)
+                    
+                    // Leyendas
+                    VStack(alignment: .leading, spacing: 5) {
+                        VStack(alignment: .leading) {
+                            Text("Quizzes")
+                                .font(.headline)
+                            Text("\(quizzesToday)/5")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.red)
+                        }
+                        
+                        VStack(alignment: .leading) {
+                            Text("Palabras")
+                                .font(.headline)
+                            Text("\(wordsToday)/7500")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.green)
+                        }
+                        
+                        VStack(alignment: .leading) {
+                            Text("Minutos")
+                                .font(.headline)
+                            Text("\(timeTodayMinutes)/30")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .padding(.leading)
+                }
+                .padding(.bottom, 20)
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    private var quizCountCard: some View {
+        Button(action: {
+            showQuizDetail = true
+        }) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemBackground))
+                
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text("Total Quizzes")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal)
+                    
+                    Divider()
+                        .padding(.horizontal, 8)
+                    
+                    VStack(alignment: .leading) {
+                        Text("Todos")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text("\(totalQuizzes)")
+                            .font(.system(size: 35, weight: .bold))
+                            .foregroundColor(.purple)
+                    }
+                    .padding(.horizontal)
+                    
+                    // Gráfico simple
+                    HStack(spacing: 3) {
+                        ForEach(0..<24, id: \.self) { _ in
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 3, height: CGFloat.random(in: 2...20))
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 5)
+                    
+                    // Marcadores de tiempo
+                    HStack {
+                        Text("12a")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("6a")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("12p")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("6p")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 5)
+                }
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var averageScoreCard: some View {
+        Button(action: {
+            showScoreDetail = true
+        }) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemBackground))
+                
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text("Puntuación")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal)
+                    
+                    Divider()
+                        .padding(.horizontal, 8)
+                    
+                    VStack(alignment: .leading) {
+                        Text("Promedio")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text(String(format: "%.1f%%", averageScorePercentage))
+                            .font(.system(size: 35, weight: .bold))
+                            .foregroundColor(.cyan)
+                    }
+                    .padding(.horizontal)
+                    
+                    // Gráfico simple
+                    HStack(spacing: 2) {
+                        ForEach(0..<24, id: \.self) { _ in
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 3, height: CGFloat.random(in: 2...20))
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 5)
+                    
+                    // Marcadores de tiempo
+                    HStack {
+                        Text("12a")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("6a")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("12p")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("6p")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 5)
+                }
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var challengeBanner: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+            
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Image(systemName: "brain.head.profile")
+                        .font(.title2)
+                    Text("Desafío")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                }
+                .padding(.horizontal)
+                .padding(.top, 12)
+                
+                Spacer()
+                
+                Text("NUEVO DESAFÍO")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.green)
+                    .padding(.horizontal)
+                
+                Text("Comprensión de lectura")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .padding(.horizontal)
+                
+                Text("15 min • Nivel medio")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal)
+                    .padding(.bottom, 12)
+            }
+            
+            HStack {
+                Spacer()
+                Image(systemName: "book.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(.secondary)
+                    .padding(.trailing, 40)
+            }
+        }
+        .frame(height: 200)
+    }
+    
+    // MARK: - Funciones auxiliares
+    
+    private func currentDateFormatted() -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE dd MMM"
+        formatter.dateFormat = "EEEE d MMM"
+        formatter.locale = Locale(identifier: "es_ES")
         return formatter.string(from: Date()).uppercased()
+    }
+    
+    // MARK: - Datos mock para los sheets
+    
+    private var mockQuizStats: QuizStats {
+        QuizStats(
+            totalQuizzes: totalQuizzes,
+            dailyAverage: 2.3,
+            bestDay: "Martes",
+            lastWeekData: [12, 15, 8, 10, 14, 9, 11]
+        )
+    }
+    
+    private var mockScoreStats: ScoreStats {
+        ScoreStats(
+            averageScore: averageScorePercentage,
+            bestScore: 95.0,
+            lastWeekData: [75, 82, 90, 78, 85, 88, 80],
+            byCategory: [
+                ("Vocabulario", 85.0),
+                ("Comprensión", 79.0),
+                ("Gramática", 91.0)
+            ]
+        )
     }
 }
 
-// MARK: - Preview con Datos de Muestra
-#Preview {
-    // 1. Configurar contenedor en memoria
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(
-        for: QuizItem.self, ResponseItem.self,
-        configurations: config
-    )
-    
-    // 2. Generar datos de muestra
-    let sampleQuizzes = [
-        QuizItem(
-            quizId: 1,
-            numWords: 120,
-            timeInSeconds: 300,
-            quizDate: Date(),//.addingTimeInterval(-86400 * 3),
-            category: "easy",
-            scorePercentage: 85.0
-        ),
-        QuizItem(
-            quizId: 2,
-            numWords: 180,
-            timeInSeconds: 300,
-            quizDate: Date(),//.addingTimeInterval(-86400 * 2),
-            category: "medium",
-            scorePercentage: 72.0
-        ),
-        QuizItem(
-            quizId: 3,
-            numWords: 250,
-            timeInSeconds: 300,
-            quizDate: Date(),//.addingTimeInterval(-86400),
-            category: "hard",
-            scorePercentage: 65.0
-        ),
-        QuizItem(
-            quizId: 4,
-            numWords: 140,
-            timeInSeconds: 300,
-            quizDate: Date(),
-            category: "easy",
-            scorePercentage: 88.0
-        )
-    ]
-    
-    let sampleResponses = [
-        ResponseItem(questionType: "vocabulary", isCorrect: true, quizId: 1),
-        ResponseItem(questionType: "vocabulary", isCorrect: false, quizId: 1),
-        ResponseItem(questionType: "reading", isCorrect: true, quizId: 1),
-        ResponseItem(questionType: "vocabulary", isCorrect: true, quizId: 2),
-        ResponseItem(questionType: "reading", isCorrect: false, quizId: 2),
-        ResponseItem(questionType: "reading", isCorrect: true, quizId: 3),
-        ResponseItem(questionType: "vocabulary", isCorrect: true, quizId: 4)
-    ]
-    
-    // 3. Insertar datos en el contenedor
-    Task {
-        sampleQuizzes.forEach { container.mainContext.insert($0) }
-        sampleResponses.forEach { container.mainContext.insert($0) }
-    }
-    
-    // 4. Retornar la vista con el contenedor
-    return NavigationStack {
-        DashboardView(modelContext: container.mainContext)
-    }
-    .modelContainer(container)
+// Estructuras para los datos mock
+struct QuizStats {
+    let totalQuizzes: Int
+    let dailyAverage: Double
+    let bestDay: String
+    let lastWeekData: [Int]
 }
-// Add these properties to your AnalyticsViewModel class:
-// var overallScore: Double = 75.0
-// var correctPercentage: Double = 85.0
-// var quizCompletionRate: Double = 68.0
-// var todayQuizCount: Int = 0
-// var todayAverageScore: Double = 0.0
-//
-// And update your loadData() method to calculate these values
+
+struct ScoreStats {
+    let averageScore: Double
+    let bestScore: Double
+    let lastWeekData: [Double]
+    let byCategory: [(String, Double)]
+}
+
+// Vistas para los sheets
+struct QuizStatsDetailView: View {
+    let stats: QuizStats
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    Text("Estadísticas de Quizzes")
+                        .font(.title)
+                        .bold()
+                    
+                    // Aquí puedes añadir más visualizaciones detalladas
+                    // usando los datos de `stats`
+                }
+                .padding()
+            }
+            .navigationTitle("Detalle de Quizzes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cerrar") {}
+                }
+            }
+        }
+    }
+}
+
+struct ScoreStatsDetailView: View {
+    let stats: ScoreStats
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    Text("Estadísticas de Puntuación")
+                        .font(.title)
+                        .bold()
+                    
+                    // Aquí puedes añadir más visualizaciones detalladas
+                    // usando los datos de `stats`
+                }
+                .padding()
+            }
+            .navigationTitle("Detalle de Puntuación")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cerrar") {}
+                }
+            }
+        }
+    }
+}
+
+// Preview
+#Preview {
+    DashboardView()
+}

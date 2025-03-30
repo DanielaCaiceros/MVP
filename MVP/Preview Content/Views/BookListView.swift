@@ -25,7 +25,7 @@ struct BookListView: View {
                     .tabItem { Label("Library", systemImage: "books.vertical.fill") }
                     .tag(1)
                 
-                AccountView()
+                DashboardView()
                     .tabItem { Label("Account", systemImage: "person.fill") }
                     .tag(2)
             }
