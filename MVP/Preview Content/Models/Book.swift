@@ -7,7 +7,8 @@
 
 import Foundation
 
-struct Book: Identifiable, Codable {
+
+struct Book: Identifiable, Codable, Hashable {
     let id: Int
     let title: String
     let authors: [Author]?
@@ -15,7 +16,7 @@ struct Book: Identifiable, Codable {
     let formats: [String: String]?
     let downloadCount: Int?
     
-    struct Author: Codable {
+    struct Author: Codable, Hashable {
         let name: String
         let birthYear: Int?
         let deathYear: Int?

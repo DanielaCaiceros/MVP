@@ -7,6 +7,7 @@ struct EasyQuizView: View {
     @State private var shuffledAnswers: [Answer] = []
     @State private var selectedAnswer: Answer? = nil
     @State private var answered: Bool = false
+    @Environment(\.dismiss) var dismiss
 
     init(questionType: String, question: String, options: [Answer]) {
         self.questionType = questionType
@@ -16,62 +17,102 @@ struct EasyQuizView: View {
     }
 
     var body: some View {
-        let isVocabQuestion = questionType == "Vocabulary"
-
-        VStack {
-            Spacer()
-            HStack {
-                HStack {
-                    Image(systemName: isVocabQuestion ? "character.book.closed" : "magnifyingglass")
-                        .font(.title)
-                    Text(questionType)
-                        .font(.title2)
-                }
-                .padding(.bottom)
-                .bold()
-
-                Spacer()
-            }
-            Spacer()
-
-            HStack {
-                Image("Calli")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 100, height: 100, alignment: .topLeading)
-
-                DialogBoxView(message: question)
-                    .offset(y: -35)
-                Spacer()
-            }
-
-            Spacer()
-
-            ForEach(shuffledAnswers.indices, id: \.self) { i in
-                Button {
-                    if !answered {
-                        answered.toggle()
-                        selectedAnswer = shuffledAnswers[i]
-                    }
-                } label: {
-                    AnswerButtonView(answer: shuffledAnswers[i],
-                                     isSelected: selectedAnswer == shuffledAnswers[i])
-                }
-            }
-
-            if let selectedAnswer = selectedAnswer {
+            let isVocabQuestion = questionType == "Vocabulary"
+            
+            ZStack {
+                Color(.systemBackground)
+                    .edgesIgnoringSafeArea(.all)
+                
                 VStack {
-                    Text("The correct answer was:")
-                    Text(options.first(where: { $0.correct })?.answerText ?? "")
-                        .bold()
+                    // Header
+                    HStack {
+                        Image(systemName: isVocabQuestion ? "character.book.closed" : "magnifyingglass")
+                            .font(.title)
+                        Text(questionType)
+                            .font(.title2.bold())
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    
+                    // Contenido principal
+                    VStack {
+                        HStack {
+                            Image("Calli")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 100)
+                            
+                            DialogBoxView(message: question)
+                                .offset(y: -35)
+                            Spacer()
+                        }
+                        
+                        // Opciones de respuesta
+                        ForEach(shuffledAnswers.indices, id: \.self) { i in
+                            AnswerButton(
+                                answer: shuffledAnswers[i],
+                                isSelected: selectedAnswer == shuffledAnswers[i],
+                                action: {
+                                    if !answered {
+                                        answered = true
+                                        selectedAnswer = shuffledAnswers[i]
+                                    }
+                                }
+                            )
+                        }
+                        
+                        // Resultado
+                        if let selectedAnswer = selectedAnswer {
+                            VStack {
+                                Text("Respuesta correcta:")
+                                    .font(.headline)
+                                Text(options.first(where: { $0.correct })?.answerText ?? "")
+                                    .bold()
+                                    .padding()
+                                Button {
+                                    dismiss()
+                                } label: {
+                                    Text("Continuar leyendo")
+                                        .padding()
+                                        .frame(maxWidth: .infinity)
+                                        .background(Color.blue)
+                                        .foregroundColor(.white)
+                                        .cornerRadius(15)
+                                }
+                               
+                            }
+                            .padding()
+                        }
+                    }
+                    .padding()
+                    
+                    Spacer()
                 }
-                .foregroundColor(selectedAnswer.correct ? .green : .red)
-                .padding(.top, 8)
             }
-
-            Spacer()
         }
-        .padding()
+}
+
+struct AnswerButton: View {
+    let answer: Answer
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(answer.answerText)
+                    .foregroundColor(isSelected ? (answer.correct ? .white : .white) : .primary)
+                Spacer()
+                if isSelected {
+                    Image(systemName: answer.correct ? "checkmark.circle.fill" : "xmark.circle.fill")
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isSelected ? (answer.correct ? Color.green : Color.red) : Color(.secondarySystemBackground))
+            )
+        }
     }
 }
 
@@ -82,3 +123,4 @@ struct EasyQuizView: View {
         Answer(answerText: "Option 3", correct: false)
     ])
 }
+

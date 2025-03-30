@@ -6,65 +6,56 @@
 //
 
 import SwiftUI
-
 struct QuizAmountSelectorView: View {
-    @State private var quizAmount: Int = 8
+    @Binding var quizAmount: Int
+    @Environment(\.dismiss) var dismiss
+    let onStart: () -> Void
+    
     var body: some View {
-        VStack(alignment: .center){
+        VStack(spacing: 30) {
             Text("How many quizzes do you want to solve?")
-                .font(.title)
-                .frame(maxWidth: .infinity)  
+                .font(.title2)
                 .multilineTextAlignment(.center)
-            Spacer()
-            HStack{
-                Button {
-                    if quizAmount > 1 {
-                        quizAmount -= 1
-                    }
-                } label: {
-                    Image(systemName: "minus")
-                    .font(.system(size: 50))
-                }
-                Text("\(quizAmount)")
-                    .font(.system(size: 150))
-                    .padding(.horizontal)
-                Button {
-                    if quizAmount < 20 {
-                        quizAmount += 1
-                    }
-                }label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 50))
-                }
-            }
-            .font(.title)
-            .foregroundStyle(mainColor)
-            .bold()
             
+            HStack {
+                QuizAdjustButton(systemImage: "minus") {
+                    quizAmount = max(1, quizAmount - 1)
+                }
                 
-            
-            Spacer()
-            Button{
-                print("Continue")
-            } label: {
-                Text("Start reading!")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .foregroundColor(.white)
-                    .bold()
-                    .background(mainColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 15)
-                            .stroke(mainColor)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 15))
+                Text("\(quizAmount)")
+                    .font(.system(size: 80, weight: .bold))
+                    .padding(.horizontal)
+                
+                QuizAdjustButton(systemImage: "plus") {
+                    quizAmount = min(20, quizAmount + 1)
+                }
             }
             
+            Button {
+                            onStart()
+                            dismiss() // Cierra el selector
+                        } label: {
+                            Text("Start reading!")
+                                
+                        }
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
     }
 }
 
-#Preview {
-    QuizAmountSelectorView()
+struct QuizAdjustButton: View {
+    let systemImage: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 40))
+                .padding(20)
+                .background(Color.blue.opacity(0.1))
+                .clipShape(Circle())
+        }
+    }
 }
