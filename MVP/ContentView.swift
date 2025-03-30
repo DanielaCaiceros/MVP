@@ -1,24 +1,15 @@
-//
-//  ContentView.swift
-//  MVP
-//
-//  Created by Daniela Caiceros on 29/03/25.
-//
-
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+    @State private var isLoading = true
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            NavigationStack {
+                DashboardView(modelContext: modelContext)
+            }
         }
-        .padding()
     }
-}
-
-#Preview {
-    ContentView()
 }
