@@ -196,7 +196,8 @@ struct BookDetailView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(height: 300)
-                        .cornerRadius(12)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .cornerRadius(15)
                         .shadow(radius: 10)
                 }
                 
