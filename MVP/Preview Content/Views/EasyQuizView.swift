@@ -72,7 +72,7 @@ struct EasyQuizView: View {
                             }
                             
                             // Resultado
-                            if let selectedAnswer = selectedAnswer {
+                            if selectedAnswer != nil {
                                 VStack {
                                     Text("Correct answer:")
                                         .font(.headline)

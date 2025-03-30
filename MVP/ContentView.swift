@@ -6,10 +6,7 @@ struct ContentView: View {
     @State private var isLoading = true
     
     var body: some View {
-        Group {
-            NavigationStack {
-            
-            }
-        }
+        BookListView()
+            .environmentObject(BookViewModel())
     }
 }
