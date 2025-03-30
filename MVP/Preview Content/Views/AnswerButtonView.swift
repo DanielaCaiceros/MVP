@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct AnswerButtonView: View {
-    @State public var answer: Answer
-    @State public var isSelected: Bool
+    public var answer: Answer
+    public var isSelected: Bool
     var body: some View {
         VStack{
             Text(answer.answerText)
