@@ -67,8 +67,19 @@ struct BookListView: View {
                     if !viewModel.continueReading.isEmpty {
                         bookSection(title: "Continue Reading", books: viewModel.continueReading)
                     }
+                    
+                    // Modified Want to Read section
                     if !viewModel.wantToRead.isEmpty {
                         bookSection(title: "Want to Read", books: viewModel.wantToRead)
+                    } else {
+                        // Optional: Show empty state if you want
+                        VStack(alignment: .leading) {
+                            Text("Want to Read")
+                                .font(.title2).bold()
+                            Text("Tap the heart icon on any book to add it here")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.top)
                     }
                 }
                 .padding(.horizontal)
@@ -80,9 +91,10 @@ struct BookListView: View {
     // MARK: - Library Tab Components
     private var fullCatalogView: some View {
         ScrollView {
+            searchBar
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16)], spacing: 16) {
                 ForEach(viewModel.books) { book in
-                    NavigationLink(destination: BookDetailView(book: book)) {
+                    NavigationLink(destination: BookDetailView(book: book, viewModel: viewModel)) {
                         bookCard(book)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -111,12 +123,12 @@ struct BookListView: View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.gray)
+            // In BookListView's search bar
             TextField("Find a book", text: $searchText)
-                .textFieldStyle(PlainTextFieldStyle())
-                .keyboardType(.webSearch)
-                .onSubmit {
-                    viewModel.fetchBooks(searchQuery: searchText)
+                .onChange(of: searchText) { _, newValue in
+                    viewModel.searchBooks(query: newValue)
                 }
+
         }
         .padding(12)
         .background(Color(.systemGray6))
@@ -132,7 +144,7 @@ struct BookListView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     ForEach(books) { book in
-                        NavigationLink(destination: BookDetailView(book: book)) {
+                        NavigationLink(destination: BookDetailView(book: book, viewModel: viewModel)) {
                             bookCard(book)
                         }
                     }
@@ -185,13 +197,14 @@ struct BookListView: View {
 // MARK: - Book Detail View
 struct BookDetailView: View {
     let book: Book
+    @ObservedObject var viewModel: BookViewModel
     @State private var showReader = false
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Cover Image
-                if let imageURL = BookViewModel().coverImageURL(for: book) {
+                if let imageURL = viewModel.coverImageURL(for: book) {
                     KFImage(imageURL)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
@@ -200,40 +213,42 @@ struct BookDetailView: View {
                         .cornerRadius(15)
                         .shadow(radius: 10)
                 }
-                
+
                 // Title and Author
                 VStack(alignment: .leading, spacing: 8) {
                     Text(book.title)
                         .font(.largeTitle.bold())
-                    
-                    Text(BookViewModel().authorName(for: book))
+
+                    Text(viewModel.authorName(for: book))
                         .font(.title2)
                         .foregroundColor(.secondary)
                 }
-                
+
                 // Metadata
                 VStack(alignment: .leading, spacing: 12) {
                     if let languages = book.languages, !languages.isEmpty {
                         metadataRow(icon: "globe", text: languages.joined(separator: ", "))
                     }
-                    
+
                     if let downloadCount = book.downloadCount {
                         metadataRow(icon: "arrow.down.circle", text: "\(downloadCount) downloads")
                     }
                 }
                 .padding(.vertical)
-                
+
                 // Action Buttons
                 HStack(spacing: 16) {
+                    let isFavorite = viewModel.wantToRead.contains(where: { $0.id == book.id })
+
                     Button(action: {
-                        // Add to favorites action
+                        viewModel.toggleFavorite(book: book)
                     }) {
-                        Label("Favorite", systemImage: "heart")
+                        Label("Favorite", systemImage: isFavorite ? "heart.fill" : "heart")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                     .tint(.pink)
-                    
+
                     if book.textFileURL != nil {
                         Button(action: {
                             showReader = true
@@ -245,13 +260,13 @@ struct BookDetailView: View {
                     }
                 }
                 .padding(.top)
-                
+
                 Divider()
-                
+
                 // Description placeholder
                 Text("Description")
                     .font(.title2.bold())
-                
+
                 Text(bookDescription(for: book))
                     .font(.body)
                     .lineSpacing(6)
@@ -265,7 +280,7 @@ struct BookDetailView: View {
             }
         }
     }
-    
+
     private func metadataRow(icon: String, text: String) -> some View {
         HStack {
             Image(systemName: icon)
@@ -276,12 +291,12 @@ struct BookDetailView: View {
             Spacer()
         }
     }
-    
+
     private func bookDescription(for book: Book) -> String {
-        // Placeholder description - in a real app you might fetch this from an API
-        return "This is a placeholder description for \(book.title). In a real application, this would be fetched from the book's metadata or from a summary service. The book \(book.title) by \(BookViewModel().authorName(for: book)) is a classic work available through Project Gutenberg."
+        return "This is a placeholder description for \(book.title). In a real application, this would be fetched from the book's metadata or from a summary service. The book \(book.title) by \(viewModel.authorName(for: book)) is a classic work available through Project Gutenberg."
     }
 }
+
 
 // MARK: - Supporting Views
 struct AccountView: View {

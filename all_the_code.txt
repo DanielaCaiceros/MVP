@@ -1,0 +1,1255 @@
+===== ./MVP/ViewModel/BookViewModel.swift =====
+//
+//  BookViewModel.swift
+//  MVP
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+import SwiftUI
+
+import Foundation
+import SwiftUI
+
+class BookViewModel: ObservableObject {
+    @Published var books: [Book] = []
+    @Published var continueReading: [Book] = []
+    @Published var wantToRead: [Book] = []
+    @Published var isLoading = false
+    @Published var error: Error?
+    
+    init() {
+        fetchBooks()
+    }
+    
+    func fetchBooks(searchQuery: String? = nil) {
+        isLoading = true
+        NetworkManager.shared.fetchBooks(searchQuery: searchQuery) { [weak self] books in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                if let books = books {
+                    self?.books = books
+                    self?.continueReading = Array(books.prefix(3)) // Últimos 3 libros leídos
+                    self?.wantToRead = Array(books.suffix(3)) // Próximos 3 libros a leer
+                }
+            }
+        }
+    }
+    
+    func authorName(for book: Book) -> String {
+        book.authors?.first?.name ?? "Autor desconocido"
+    }
+    
+    func coverImageURL(for book: Book) -> URL? {
+        guard let formats = book.formats else { return nil }
+        
+        let imageKeys = [
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "image/gif"
+        ]
+        
+        for key in imageKeys {
+            if let urlString = formats[key], let url = URL(string: urlString) {
+                return url
+            }
+        }
+        
+        return nil
+    }
+}
+
+
+
+===== ./MVP/MVPApp.swift =====
+//
+//  MVPApp.swift
+//  MVP
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import SwiftUI
+
+@main
+struct MVPApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+
+
+===== ./MVP/Preview Content/Constants/Colors.swift =====
+//
+//  Colors.swift
+//  MVP
+//
+//  Created by Leo A.Molina on 29/03/25.
+//
+
+import Foundation
+import SwiftUI
+
+let mainColor = Color(red: 201/255, green: 127/255, blue: 17/255)
+
+
+===== ./MVP/Preview Content/Models/NetworkManager.swift =====
+//
+//  NetworkManager.swift
+//  MVP
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import Foundation
+
+class NetworkManager {
+    static let shared = NetworkManager()
+    private let baseURL = "https://gutendex.com/books"
+    
+    func fetchBooks(searchQuery: String? = nil, completion: @escaping ([Book]?) -> Void) {
+        var components = URLComponents(string: baseURL)!
+        
+        // Añade parámetros de búsqueda si existen
+        if let query = searchQuery?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            components.queryItems = [URLQueryItem(name: "search", value: query)]
+        }
+        
+        guard let url = components.url else {
+            completion(nil)
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            // Manejo básico de errores
+            if let error = error {
+                print("🔴 Network error:", error.localizedDescription)
+                completion(nil)
+                return
+            }
+            
+            guard let data = data else {
+                print("🔴 No data received")
+                completion(nil)
+                return
+            }
+            
+            // Decodificación
+            do {
+                let response = try JSONDecoder().decode(BookResponse.self, from: data)
+                completion(response.results)
+            } catch {
+                print("🔴 Decoding error:", error)
+                completion(nil)
+            }
+        }.resume()
+    }
+}
+
+
+struct BookResponse: Codable {
+    let count: Int          // Número total de libros disponibles
+    let next: String?      // URL para la siguiente página (paginación)
+    let previous: String?  // URL para la página anterior
+    let results: [Book]    // Array de libros
+    
+    // Tip: Puedes omitir 'count', 'next' y 'previous' si no los necesitas
+}
+
+
+===== ./MVP/Preview Content/Models/Book.swift =====
+//
+//  Book.swift
+//  MVP
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import Foundation
+
+struct Book: Identifiable, Codable {
+    let id: Int
+    let title: String
+    let authors: [Author]?
+    let languages: [String]?
+    let formats: [String: String]?
+    let downloadCount: Int?
+    
+    struct Author: Codable {
+        let name: String
+        let birthYear: Int?
+        let deathYear: Int?
+    }
+    
+    var textFileURL: URL? {
+        guard let formats = formats else { return nil }
+        
+        // Formatos prioritarios en orden
+        let preferredFormats = [
+            "text/plain",
+            "text/plain; charset=utf-8",
+            "text/plain; charset=us-ascii",
+            "text/html"
+        ]
+        
+        // Busca el primer formato disponible
+        for format in preferredFormats {
+            if let urlString = formats[format],
+               let url = URL(string: urlString) {
+                return url
+            }
+        }
+        
+        // Si no encuentra los prioritarios, busca cualquier clave que comience con "text/plain"
+        if let (_, urlString) = formats.first(where: { $0.key.hasPrefix("text/plain") }),
+           let url = URL(string: urlString) {
+            return url
+        }
+        
+        return nil
+    }
+}
+
+
+===== ./MVP/Preview Content/Models/AnswerModel.swift =====
+//
+//  AnswerModel.swift
+//  MVP
+//
+//  Created by Leo A.Molina on 29/03/25.
+//
+
+import Foundation
+
+struct Answer: Codable, Identifiable {
+    var id = UUID()
+    let answerText: String
+    let correct: Bool
+}
+
+
+===== ./MVP/Preview Content/Views/BookListView.swift =====
+//
+//  BookListView.swift
+//  MVP
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import SwiftUI
+import Kingfisher
+
+struct BookListView: View {
+    @StateObject private var viewModel = BookViewModel()
+    @State private var searchText = ""
+    @State private var selectedTab = 0
+    
+    var body: some View {
+        NavigationView {
+            TabView(selection: $selectedTab) {
+                // Home Tab
+                mainHomeView
+                    .tabItem {
+                        Label("Home", systemImage: "house.fill")
+                    }
+                    .tag(0)
+                
+                // Library Tab
+                fullCatalogView
+                    .tabItem {
+                        Label("Library", systemImage: "books.vertical.fill")
+                    }
+                    .tag(1)
+                
+                // Account Tab
+                AccountView()
+                    .tabItem {
+                        Label("Account", systemImage: "person.fill")
+                    }
+                    .tag(2)
+            }
+            .accentColor(.blue)
+            .navigationBarHidden(true)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
+    }
+    
+    // MARK: - Home Tab Components
+    private var mainHomeView: some View {
+        Group {
+            if viewModel.isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if viewModel.error != nil {
+                Text("Error loading books")
+                    .foregroundColor(.red)
+            } else {
+                contentView
+            }
+        }
+    }
+    
+    private var contentView: some View {
+        VStack(spacing: 0) {
+            header
+            searchBar
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    if !viewModel.continueReading.isEmpty {
+                        bookSection(title: "Continue Reading", books: viewModel.continueReading)
+                    }
+                    if !viewModel.wantToRead.isEmpty {
+                        bookSection(title: "Want to Read", books: viewModel.wantToRead)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+            }
+        }
+    }
+    
+    // MARK: - Library Tab Components
+    private var fullCatalogView: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16)], spacing: 16) {
+                ForEach(viewModel.books) { book in
+                    NavigationLink(destination: BookDetailView(book: book)) {
+                        bookCard(book)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding()
+        }
+    }
+    
+    // MARK: - Shared Components
+    private var header: some View {
+        HStack {
+            Text("Home")
+                .font(.largeTitle).bold()
+            Spacer()
+            HStack(spacing: 4) {
+                Text("🔥6")
+                // Placeholder for user avatar
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 20)
+    }
+    
+    private var searchBar: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+            TextField("Find a book", text: $searchText)
+                .textFieldStyle(PlainTextFieldStyle())
+                .keyboardType(.webSearch)
+                .onSubmit {
+                    viewModel.fetchBooks(searchQuery: searchText)
+                }
+        }
+        .padding(12)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .padding(.horizontal)
+        .padding(.top, 8)
+    }
+    
+    private func bookSection(title: String, books: [Book]) -> some View {
+        VStack(alignment: .leading) {
+            Text(title)
+                .font(.title2).bold()
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(books) { book in
+                        NavigationLink(destination: BookDetailView(book: book)) {
+                            bookCard(book)
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+        }
+    }
+    
+    private func bookCard(_ book: Book) -> some View {
+        VStack(alignment: .leading) {
+            if let imageURL = viewModel.coverImageURL(for: book) {
+                KFImage(imageURL)
+                    .resizable()
+                    .placeholder {
+                        Image(systemName: "book.closed.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 60, height: 60)
+                            .foregroundColor(.gray)
+                    }
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 120, height: 180)
+                    .clipped()
+                    .cornerRadius(10)
+            } else {
+                Image(systemName: "book.closed.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 60, height: 60)
+                    .foregroundColor(.gray)
+                    .frame(width: 120, height: 180)
+                    .background(Color(.systemGray5))
+                    .cornerRadius(10)
+            }
+            
+            Text(viewModel.authorName(for: book))
+                .font(.caption)
+                .foregroundColor(.gray)
+                .lineLimit(1)
+            Text(book.title)
+                .font(.headline)
+                .lineLimit(1)
+                .foregroundColor(.black)
+        }
+        .frame(width: 120)
+    }
+}
+
+// MARK: - Book Detail View
+struct BookDetailView: View {
+    let book: Book
+    @State private var showReader = false
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Cover Image
+                if let imageURL = BookViewModel().coverImageURL(for: book) {
+                    KFImage(imageURL)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 300)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .cornerRadius(15)
+                        .shadow(radius: 10)
+                }
+                
+                // Title and Author
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(book.title)
+                        .font(.largeTitle.bold())
+                    
+                    Text(BookViewModel().authorName(for: book))
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Metadata
+                VStack(alignment: .leading, spacing: 12) {
+                    if let languages = book.languages, !languages.isEmpty {
+                        metadataRow(icon: "globe", text: languages.joined(separator: ", "))
+                    }
+                    
+                    if let downloadCount = book.downloadCount {
+                        metadataRow(icon: "arrow.down.circle", text: "\(downloadCount) downloads")
+                    }
+                }
+                .padding(.vertical)
+                
+                // Action Buttons
+                HStack(spacing: 16) {
+                    Button(action: {
+                        // Add to favorites action
+                    }) {
+                        Label("Favorite", systemImage: "heart")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.pink)
+                    
+                    if book.textFileURL != nil {
+                        Button(action: {
+                            showReader = true
+                        }) {
+                            Label("Read Now", systemImage: "book")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding(.top)
+                
+                Divider()
+                
+                // Description placeholder
+                Text("Description")
+                    .font(.title2.bold())
+                
+                Text(bookDescription(for: book))
+                    .font(.body)
+                    .lineSpacing(6)
+            }
+            .padding()
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(isPresented: $showReader) {
+            if book.textFileURL != nil {
+                BookReaderView(book: book)
+            }
+        }
+    }
+    
+    private func metadataRow(icon: String, text: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .frame(width: 24)
+            Text(text)
+                .font(.subheadline)
+            Spacer()
+        }
+    }
+    
+    private func bookDescription(for book: Book) -> String {
+        // Placeholder description - in a real app you might fetch this from an API
+        return "This is a placeholder description for \(book.title). In a real application, this would be fetched from the book's metadata or from a summary service. The book \(book.title) by \(BookViewModel().authorName(for: book)) is a classic work available through Project Gutenberg."
+    }
+}
+
+// MARK: - Supporting Views
+struct AccountView: View {
+    var body: some View {
+        Text("Account View")
+            .font(.largeTitle)
+    }
+}
+
+#Preview {
+    BookListView()
+}
+
+
+===== ./MVP/Preview Content/Views/DialogBoxView.swift =====
+//
+//  DialogBoxView.swift
+//  MVP
+//
+//  Created by Leo A.Molina on 29/03/25.
+//
+
+import SwiftUI
+
+struct DialogBoxView: View {
+    @State public var message: String
+    var body: some View {
+        Text(message)
+            .padding()
+            .background(mainColor)
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 16.0, style: .continuous))
+            .overlay(alignment: .bottomLeading) {
+                Image(systemName: "arrowtriangle.down.fill")
+                    .font(.title)
+                    .rotationEffect(.degrees(45))
+                    .offset(x: -10, y : 10)
+                    .foregroundStyle(mainColor)
+            }
+    }
+}
+
+#Preview {
+    DialogBoxView(message: "Hello!")
+}
+
+
+===== ./MVP/Preview Content/Views/BookReaderView.swift =====
+//
+//  BookReaderView.swift
+//  MVP
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+import SwiftUI
+
+struct BookReaderView: View {
+    let book: Book
+    @Environment(\.presentationMode) var presentationMode
+    @State private var paragraphs: [String] = []
+    @State private var currentPage = 0
+    
+    // Persistencia de preferencias
+    @AppStorage("readerFontSize") private var fontSize: Double = 18
+    @AppStorage("readerFontType") private var storedFontType = FontType.system.rawValue
+    @AppStorage("readerLineSpacing") private var lineSpacing: Double = 1.5
+    @AppStorage("readerPadding") private var padding: Double = 20
+    @AppStorage("readerTheme") private var selectedTheme = Theme.light.rawValue
+    
+    @State private var showSettings = false
+    @State private var showThemes = false
+    
+    // Configuración de fuentes
+    enum FontType: String, CaseIterable {
+        case system = "System"
+        case serif = "Georgia"
+        case sansSerif = "Avenir"
+        case monospace = "Courier New"
+        
+        var font: Font {
+            switch self {
+            case .system: return .body
+            case .serif: return .custom("Georgia", size: 16)
+            case .sansSerif: return .custom("Avenir", size: 16)
+            case .monospace: return .custom("Courier New", size: 16)
+            }
+        }
+    }
+    
+    // Temas predefinidos
+    enum Theme: String, CaseIterable {
+        case light = "Claro"
+        case dark = "Oscuro"
+        case sepia = "Sépia"
+        case solarized = "Solarizado"
+        
+        var background: Color {
+            switch self {
+            case .light: return .white
+            case .dark: return .black
+            case .sepia: return Color(red: 0.95, green: 0.93, blue: 0.86)
+            case .solarized: return Color(red: 0.99, green: 0.96, blue: 0.89)
+            }
+        }
+        
+        var textColor: Color {
+            switch self {
+            case .light: return .black
+            case .dark: return .white
+            case .sepia, .solarized: return Color(red: 0.24, green: 0.21, blue: 0.16)
+            }
+        }
+    }
+    
+    // Propiedades computadas para el tema actual
+    private var currentTheme: Theme {
+        Theme(rawValue: selectedTheme) ?? .light
+    }
+    
+    private var currentFont: FontType {
+        FontType(rawValue: storedFontType) ?? .system
+    }
+    
+    var body: some View {
+        ZStack {
+            currentTheme.background.edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 0) {
+                // Barra de navegación superior
+                navigationBar
+                
+                // Contenido del libro con gestos
+                GeometryReader { geometry in
+                    TabView(selection: $currentPage) {
+                        ForEach(0..<paragraphs.count, id: \.self) { index in
+                            Text(paragraphs[index])
+                                .font(currentFont.font)
+                                .foregroundColor(currentTheme.textColor)
+                                .font(.system(size: fontSize))
+                                .lineSpacing(lineSpacing)
+                                .padding(padding)
+                                .frame(width: geometry.size.width,
+                                       height: geometry.size.height,
+                                       alignment: .topLeading)
+                                .tag(index)
+                                .background(currentTheme.background)
+                                .gesture(
+                                    DragGesture()
+                                        .onEnded { value in
+                                            if value.translation.width < -100 {
+                                                withAnimation {
+                                                    goToNextPage()
+                                                }
+                                            } else if value.translation.width > 100 {
+                                                withAnimation {
+                                                    goToPreviousPage()
+                                                }
+                                            }
+                                        }
+                                )
+                        }
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                }
+                
+                // Controles de página
+                pageControls
+            }
+            
+            // Panel de configuración
+            if showSettings {
+                settingsPanel
+            }
+            
+            // Selector de temas
+            if showThemes {
+                themesPanel
+            }
+        }
+        .task {
+            await loadAndFormatContent()
+        }
+    }
+    
+    // MARK: - Componentes personalizados
+    
+    private var navigationBar: some View {
+        HStack {
+            Button(action: {
+                presentationMode.wrappedValue.dismiss()
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.headline)
+                    .padding(8)
+                    .background(Color(.systemGray5))
+                    .clipShape(Circle())
+            }
+            .padding(.leading)
+            
+            Text(book.title)
+                .font(.headline)
+                .lineLimit(1)
+                .padding(.horizontal)
+                .foregroundColor(currentTheme.textColor)
+            
+            Spacer()
+            
+            Button(action: {
+                withAnimation {
+                    showSettings.toggle()
+                    showThemes = false
+                }
+            }) {
+                Image(systemName: "textformat")
+                    .font(.headline)
+                    .padding(8)
+                    .background(Color(.systemGray5))
+                    .clipShape(Circle())
+            }
+            .padding(.trailing)
+        }
+        .padding(.vertical)
+        .background(currentTheme.background.opacity(0.9))
+    }
+    
+    private var pageControls: some View {
+        HStack {
+            Button(action: {
+                withAnimation {
+                    goToPreviousPage()
+                }
+            }) {
+                Image(systemName: "chevron.left")
+                    .padding()
+            }
+            .disabled(currentPage == 0)
+            
+            Spacer()
+            
+            Text("\(currentPage + 1)/\(paragraphs.count)")
+                .font(.subheadline)
+                .monospacedDigit()
+                .foregroundColor(currentTheme.textColor)
+            
+            Spacer()
+            
+            Button(action: {
+                withAnimation {
+                    goToNextPage()
+                }
+            }) {
+                Image(systemName: "chevron.right")
+                    .padding()
+            }
+            .disabled(currentPage == paragraphs.count - 1)
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .background(currentTheme.background.opacity(0.9))
+    }
+    
+    private var settingsPanel: some View {
+        VStack {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                Text("Ajustes de lectura")
+                    .font(.headline)
+                
+                // Control de tamaño de fuente
+                HStack {
+                    Text("Tamaño:")
+                    Slider(value: $fontSize, in: 12...28, step: 1)
+                    Text("\(Int(fontSize))")
+                        .frame(width: 30)
+                }
+                
+                // Selector de tipo de fuente
+                Picker("Fuente:", selection: $storedFontType) {
+                    ForEach(FontType.allCases, id: \.self) { font in
+                        Text(font.rawValue).tag(font.rawValue)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                
+                // Control de interlineado
+                HStack {
+                    Text("Espaciado:")
+                    Slider(value: $lineSpacing, in: 1...3, step: 0.1)
+                    Text(String(format: "%.1f", lineSpacing))
+                        .frame(width: 30)
+                }
+                
+                // Botón para temas
+                Button(action: {
+                    withAnimation {
+                        showThemes = true
+                        showSettings = false
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "paintpalette")
+                        Text("Cambiar tema")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                
+                // Botón para cerrar
+                Button("Listo") {
+                    withAnimation {
+                        showSettings = false
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(15)
+            .shadow(radius: 10)
+            .padding()
+        }
+        .transition(.move(edge: .bottom))
+    }
+    
+    private var themesPanel: some View {
+        VStack {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                Text("Seleccionar tema")
+                    .font(.headline)
+                
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                    ForEach(Theme.allCases, id: \.self) { theme in
+                        Button(action: {
+                            withAnimation {
+                                selectedTheme = theme.rawValue
+                                showThemes = false
+                                showSettings = true
+                            }
+                        }) {
+                            VStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(theme.background)
+                                    .frame(height: 80)
+                                    .overlay(
+                                        Text("Ejemplo")
+                                            .foregroundColor(theme.textColor)
+                                    )
+                                Text(theme.rawValue)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                
+                Button("Cancelar") {
+                    withAnimation {
+                        showThemes = false
+                        showSettings = true
+                    }
+                }
+                .padding(.top)
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(15)
+            .shadow(radius: 10)
+            .padding()
+        }
+        .transition(.move(edge: .bottom))
+    }
+    
+    // MARK: - Funciones de navegación
+    
+    private func goToPreviousPage() {
+        if currentPage > 0 {
+            currentPage -= 1
+        }
+    }
+    
+    private func goToNextPage() {
+        if currentPage < paragraphs.count - 1 {
+            currentPage += 1
+        }
+    }
+    
+    // MARK: - Lógica de contenido
+    
+    private func loadAndFormatContent() async {
+        guard let url = book.textFileURL else {
+            paragraphs = ["Formato no disponible"]
+            return
+        }
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let fullText = String(data: data, encoding: .utf8) ?? ""
+            paragraphs = splitIntoPages(text: fullText)
+        } catch {
+            paragraphs = ["Error al cargar el libro: \(error.localizedDescription)"]
+        }
+    }
+    
+    private func splitIntoPages(text: String) -> [String] {
+        // Primero normalizamos los saltos de línea
+        let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
+                                .replacingOccurrences(of: "\r", with: "\n")
+        
+        // Dividimos en párrafos (doble salto de línea)
+        let rawParagraphs = normalizedText.components(separatedBy: "\n\n")
+                                         .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        
+        var processedPages: [String] = []
+        var currentPageContent = ""
+        
+        // Tamaño aproximado de página (ajústalo según necesidades)
+        let maxPageSize = 1500 // caracteres
+        
+        for paragraph in rawParagraphs {
+            let trimmedParagraph = paragraph.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Si el párrafo es muy grande, lo dividimos
+            if trimmedParagraph.count > maxPageSize {
+                let sentences = trimmedParagraph.components(separatedBy: ". ")
+                var currentSentenceGroup = ""
+                
+                for sentence in sentences {
+                    let testContent = currentSentenceGroup.isEmpty ? sentence : currentSentenceGroup + ". " + sentence
+                    
+                    if testContent.count + currentPageContent.count < maxPageSize {
+                        currentSentenceGroup = testContent
+                    } else {
+                        if !currentPageContent.isEmpty {
+                            processedPages.append(currentPageContent)
+                            currentPageContent = ""
+                        }
+                        processedPages.append(testContent)
+                        currentSentenceGroup = ""
+                    }
+                }
+                
+                if !currentSentenceGroup.isEmpty {
+                    if currentSentenceGroup.count + currentPageContent.count < maxPageSize {
+                        currentPageContent += (currentPageContent.isEmpty ? "" : "\n\n") + currentSentenceGroup
+                    } else {
+                        if !currentPageContent.isEmpty {
+                            processedPages.append(currentPageContent)
+                        }
+                        currentPageContent = currentSentenceGroup
+                    }
+                }
+            } else {
+                // Verificamos si podemos añadir este párrafo a la página actual
+                if currentPageContent.isEmpty {
+                    currentPageContent = trimmedParagraph
+                } else if currentPageContent.count + trimmedParagraph.count + 2 < maxPageSize { // +2 por los \n\n
+                    currentPageContent += "\n\n" + trimmedParagraph
+                } else {
+                    processedPages.append(currentPageContent)
+                    currentPageContent = trimmedParagraph
+                }
+            }
+        }
+        
+        // Añadimos el último contenido si existe
+        if !currentPageContent.isEmpty {
+            processedPages.append(currentPageContent)
+        }
+        
+        return processedPages.isEmpty ? ["Contenido no disponible"] : processedPages
+    }
+}
+
+
+===== ./MVP/Preview Content/Views/AnswerButtonView.swift =====
+//
+//  AnswerButtonView.swift
+//  MVP
+//
+//  Created by Leo A.Molina on 29/03/25.
+//
+
+import SwiftUI
+
+struct AnswerButtonView: View {
+    @State public var answer: Answer
+    @State public var isSelected: Bool
+    var body: some View {
+        VStack{
+            Text(answer.answerText)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .foregroundColor(isSelected ? .white : .black)
+                .bold(isSelected)
+                .background(isSelected ? (answer.correct ? .green : .red) : .white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 15)
+                        .stroke(isSelected ? (answer.correct ? .green : .red) : mainColor, lineWidth: 2)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 15))
+            
+        }
+    }
+}
+
+#Preview {
+    AnswerButtonView(answer: Answer(answerText: "Option", correct: false), isSelected: false)
+}
+
+
+===== ./MVP/Preview Content/Views/components/BookPageView.swift =====
+//
+//  BookPageView.swift
+//  MVP
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import Foundation
+
+
+===== ./MVP/Preview Content/Views/EasyQuizView.swift =====
+//
+//  EasyQuizView.swift
+//  MVP
+//
+//  Created by Leo A.Molina on 29/03/25.
+//
+
+import SwiftUI
+
+struct EasyQuizView: View {
+    @State public var questionType: String
+    @State public var question: String
+    @State public var options: [Answer]
+    
+    var body: some View {
+        let shuffledAnswers = options.shuffled()
+        let isVocabQuestion = questionType == "Vocabulary"
+        VStack{
+            Spacer()
+            HStack{
+                HStack{
+                    Image(systemName: isVocabQuestion ? "character.book.closed" : "magnifyingglass")
+                        .font(.title)
+                    Text(questionType)
+                        .font(.title2)
+                }
+                .padding(.bottom)
+                .bold()
+                
+                    
+                Spacer()
+            }
+            Spacer()
+            
+            HStack{
+                Image("Calli")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 100, height: 100, alignment: .topLeading)
+                
+                DialogBoxView(message: question)
+                    .offset(y: -35)
+                Spacer()
+            }
+            
+            Spacer()
+            ForEach(shuffledAnswers.indices, id: \.self){i in
+                Button{
+                    
+                } label: {
+                    AnswerButtonView(answer: shuffledAnswers[i], isSelected: false)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding()
+        
+    }
+}
+
+#Preview {
+    EasyQuizView(questionType: "Reading\nComprehension", question: "Question?", options: [Answer(answerText: "Option 1", correct: true), Answer(answerText: "Option 2", correct: false), Answer(answerText: "Option 3", correct: false)])
+}
+
+
+===== ./MVP/ContentView.swift =====
+//
+//  ContentView.swift
+//  MVP
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import SwiftUI
+
+struct ContentView: View {
+    var body: some View {
+        VStack {
+            Image(systemName: "globe")
+                .imageScale(.large)
+                .foregroundStyle(.tint)
+            Text("Hello, world!")
+        }
+        .padding()
+    }
+}
+
+#Preview {
+    ContentView()
+}
+
+
+===== ./MVPUITests/MVPUITestsLaunchTests.swift =====
+//
+//  MVPUITestsLaunchTests.swift
+//  MVPUITests
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import XCTest
+
+final class MVPUITestsLaunchTests: XCTestCase {
+
+    override class var runsForEachTargetApplicationUIConfiguration: Bool {
+        true
+    }
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+    }
+
+    @MainActor
+    func testLaunch() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // Insert steps here to perform after app launch but before taking a screenshot,
+        // such as logging into a test account or navigating somewhere in the app
+
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Launch Screen"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}
+
+
+===== ./MVPUITests/MVPUITests.swift =====
+//
+//  MVPUITests.swift
+//  MVPUITests
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import XCTest
+
+final class MVPUITests: XCTestCase {
+
+    override func setUpWithError() throws {
+        // Put setup code here. This method is called before the invocation of each test method in the class.
+
+        // In UI tests it is usually best to stop immediately when a failure occurs.
+        continueAfterFailure = false
+
+        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
+    }
+
+    override func tearDownWithError() throws {
+        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    }
+
+    @MainActor
+    func testExample() throws {
+        // UI tests must launch the application that they test.
+        let app = XCUIApplication()
+        app.launch()
+
+        // Use XCTAssert and related functions to verify your tests produce the correct results.
+    }
+
+    @MainActor
+    func testLaunchPerformance() throws {
+        if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
+            // This measures how long it takes to launch your application.
+            measure(metrics: [XCTApplicationLaunchMetric()]) {
+                XCUIApplication().launch()
+            }
+        }
+    }
+}
+
+
+===== ./MVPTests/MVPTests.swift =====
+//
+//  MVPTests.swift
+//  MVPTests
+//
+//  Created by Daniela Caiceros on 29/03/25.
+//
+
+import XCTest
+@testable import MVP
+
+final class MVPTests: XCTestCase {
+
+    override func setUpWithError() throws {
+        // Put setup code here. This method is called before the invocation of each test method in the class.
+    }
+
+    override func tearDownWithError() throws {
+        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    }
+
+    func testExample() throws {
+        // This is an example of a functional test case.
+        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        // Any test you write for XCTest can be annotated as throws and async.
+        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
+        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+    }
+
+    func testPerformanceExample() throws {
+        // This is an example of a performance test case.
+        self.measure {
+            // Put the code you want to measure the time of here.
+        }
+    }
+
+}
+
+
