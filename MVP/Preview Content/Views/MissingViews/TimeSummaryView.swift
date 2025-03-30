@@ -26,25 +26,46 @@ struct TimeSummaryView: View {
                 .font(.title2)
             HStack{
                 Image(systemName: "book")
+                    .font(.system(size: 35))
                 Text("\(wordAmount) words")
+                    .font(.system(size: 39))
             }
             .bold()
-            .font(.title)
+            
             .foregroundStyle(mainColor)
            
             Text("in")
                 .font(.title2)
+            let totalTime = "\(minutes):" + formatSeconds(s: seconds) + " minutes"
             HStack{
-                Image(systemName: "book")
-                
-                Text("hello")
+                Image(systemName: "timer")
+                    .font(.system(size: 35))
+                Text(totalTime)
+                    .font(.system(size: 39))
             }
             .bold()
             .font(.title)
+            
             .foregroundStyle(mainColor)
             
             Spacer()
             
+            Button{
+                print("Continue")
+            } label: {
+                Text("Continue reading")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .foregroundColor(.white)
+                    .bold()
+                    .background(mainColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 15)
+                            .stroke(mainColor)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 15))
+            }
+
         }
         .padding()
     }
