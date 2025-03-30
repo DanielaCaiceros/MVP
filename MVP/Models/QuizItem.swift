@@ -5,27 +5,38 @@
 //  Created by Luis Garcia on 3/29/25.
 //
 
-import Foundation
 import SwiftData
+import Foundation
 
-// MARK: - Data Models
 @Model
 final class QuizItem {
-    var numQuiz: Int
-    var numWords: Int
-    var time: Int
+    var quizId: Int32
+    var numWords: Int32
+    var timeInSeconds: Int32
     var quizDate: Date
     var category: String
-    var score: Double
+    var scorePercentage: Double
     
     @Relationship(deleteRule: .cascade) var responses = [ResponseItem]()
     
-    init(numQuiz: Int, numWords: Int, time: Int, quizDate: Date, category: String, score: Double) {
-        self.numQuiz = numQuiz
+    init(
+        quizId: Int32,
+        numWords: Int32,
+        timeInSeconds: Int32,
+        quizDate: Date,
+        category: String,
+        scorePercentage: Double
+    ) {
+        self.quizId = quizId
         self.numWords = numWords
-        self.time = time
+        self.timeInSeconds = timeInSeconds
         self.quizDate = quizDate
         self.category = category
-        self.score = score
+        self.scorePercentage = scorePercentage
+    }
+    
+    // Propiedad computada para tiempo en minutos
+    var timeInMinutes: Double {
+        Double(timeInSeconds) / 60.0
     }
 }

@@ -1,4 +1,3 @@
-
 import SwiftUI
 import Charts
 
@@ -18,7 +17,7 @@ struct CorrectIncorrectPieChart: View {
                 )
                 .foregroundStyle(Color.green)
                 .annotation(position: .overlay) {
-                    Text("\(Int(Double(viewModel.correctAnswerCount) / Double(viewModel.responses.count) * 100))%")
+                    Text("\(percentageCorrect, specifier: "%.0f")%")
                         .font(.headline)
                         .foregroundStyle(.white)
                 }
@@ -29,14 +28,14 @@ struct CorrectIncorrectPieChart: View {
                     angularInset: 1
                 )
                 .foregroundStyle(Color.red)
-                .annotation(position: .overlay) {
-                    Text("\(Int(Double(viewModel.incorrectAnswerCount) / Double(viewModel.responses.count) * 100))%")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                }
             }
             .chartLegend(position: .bottom, alignment: .center)
             .frame(height: 200)
         }
+    }
+    
+    private var percentageCorrect: Double {
+        guard viewModel.responses.count > 0 else { return 0 }
+        return (Double(viewModel.correctAnswerCount) / Double(viewModel.responses.count)) * 100
     }
 }

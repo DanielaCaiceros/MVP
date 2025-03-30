@@ -5,18 +5,22 @@
 //  Created by Luis Garcia on 3/29/25.
 //
 
-import Foundation
 import SwiftData
+import Foundation
 
 @Model
 final class ResponseItem {
-    var typeQuestion: String
-    var answer: Int // 1 = correct, 0 = incorrect
-    var quizID: Int
+    var questionType: String
+    var isCorrect: Bool
+    var quizId: Int32
     
-    init(typeQuestion: String, answer: Int, quizID: Int) {
-        self.typeQuestion = typeQuestion
-        self.answer = answer
-        self.quizID = quizID
+    init(
+        questionType: String,
+        isCorrect: Bool,
+        quizId: Int32
+    ) {
+        self.questionType = questionType
+        self.isCorrect = isCorrect
+        self.quizId = quizId
     }
 }

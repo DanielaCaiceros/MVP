@@ -1,17 +1,15 @@
-
 import SwiftUI
 import Charts
-
 
 struct TimeByCategoryChart: View {
     @ObservedObject var viewModel: AnalyticsViewModel
     
     var body: some View {
         VStack(alignment: .leading) {
-            Text("Time Spent Reading by Category")
+            Text("Time Spent by Category")
                 .font(.headline)
             
-            Chart(viewModel.timeByCategory(), id: \.category) { item in
+            Chart(viewModel.timeByCategoryInMinutes(), id: \.category) { item in
                 BarMark(
                     x: .value("Category", item.category),
                     y: .value("Minutes", item.minutes)

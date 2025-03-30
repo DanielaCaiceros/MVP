@@ -1,7 +1,5 @@
-
-import SwiftUI
+import SwiftUICore
 import Charts
-
 struct ScoreDistributionChart: View {
     @ObservedObject var viewModel: AnalyticsViewModel
     
@@ -11,15 +9,17 @@ struct ScoreDistributionChart: View {
                 .font(.headline)
             
             Chart {
-                ForEach(viewModel.quizzes, id: \.numQuiz) { quiz in
+                ForEach(viewModel.quizzes) { quiz in
                     PointMark(
                         x: .value("Category", quiz.category),
-                        y: .value("Score", quiz.score)
+                        y: .value("Score", quiz.scorePercentage)
                     )
                     .foregroundStyle(by: .value("Category", quiz.category))
+                    .symbol(.circle)
                 }
             }
             .frame(height: 200)
+            .chartYScale(domain: 0...100)
         }
     }
 }

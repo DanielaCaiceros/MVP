@@ -5,9 +5,9 @@
 //  Created by Luis Garcia on 3/29/25.
 //
 
-import SwiftUICore
+import SwiftUI
+import Charts
 
-// MARK: - Chart Components
 struct AverageScoreView: View {
     @ObservedObject var viewModel: AnalyticsViewModel
     
@@ -21,7 +21,8 @@ struct AverageScoreView: View {
                     .fill(Color.gray.opacity(0.1))
                 
                 VStack {
-                    Text("\(viewModel.averageScore, specifier: "%.1f")%")
+                    // Solución: Usar viewModel.averageScorePercentage directamente
+                    Text("\(viewModel.averageScorePercentage, specifier: "%.1f")%")
                         .font(.title)
                         .bold()
                     

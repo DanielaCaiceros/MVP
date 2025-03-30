@@ -1,6 +1,5 @@
-import SwiftUICore
+import SwiftUI
 import Charts
-
 
 struct QuestionTypePerformanceChart: View {
     @ObservedObject var viewModel: AnalyticsViewModel
@@ -13,7 +12,7 @@ struct QuestionTypePerformanceChart: View {
             Chart(viewModel.questionTypePerformance(), id: \.type) { item in
                 BarMark(
                     x: .value("Type", item.type),
-                    y: .value("Percent Correct", item.percentCorrect)
+                    y: .value("Percent", item.percentCorrect)
                 )
                 .foregroundStyle(by: .value("Type", item.type))
                 .annotation(position: .top) {
@@ -22,6 +21,7 @@ struct QuestionTypePerformanceChart: View {
                 }
             }
             .frame(height: 200)
+            .chartYScale(domain: 0...100)
         }
     }
 }
