@@ -14,6 +14,7 @@ struct QuizAmountSelectorView: View {
     var body: some View {
         VStack(spacing: 30) {
             Text("How many quizzes do you want to solve?")
+                .bold()
                 .font(.title2)
                 .multilineTextAlignment(.center)
             Spacer()
@@ -37,8 +38,11 @@ struct QuizAmountSelectorView: View {
                             dismiss() // Cierra el selector
                         } label: {
                             Text("Start reading!")
-                                .foregroundStyle(mainColor)
-                        }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(mainColor)
+                                .foregroundColor(.white)
+                                .cornerRadius(15)                        }
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -37,8 +37,10 @@ struct BookDetailView: View {
                         showReader = true
                     }
                     .buttonStyle(PrimaryButtonStyle())
+                    
                 }
             }
+            .padding()
             .fullScreenCover(isPresented: $showReader) {
                 QuizAmountSelectorView(quizAmount: $selectedQuizAmount) {
                     startReading = true // Actualiza el estado aquí
@@ -74,7 +76,7 @@ struct BookDetailView: View {
             configuration.label
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue)
+                .background(mainColor)
                 .foregroundColor(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 15))
         }

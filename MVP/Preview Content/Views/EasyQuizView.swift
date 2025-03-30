@@ -18,77 +18,94 @@ struct EasyQuizView: View {
 
     var body: some View {
             let isVocabQuestion = questionType == "Vocabulary"
-            
-            ZStack {
-                Color(.systemBackground)
-                    .edgesIgnoringSafeArea(.all)
-                
-                VStack {
-                    // Header
-                    HStack {
-                        Image(systemName: isVocabQuestion ? "character.book.closed" : "magnifyingglass")
-                            .font(.title)
-                        Text(questionType)
-                            .font(.title2.bold())
-                        Spacer()
-                    }
-                    .padding(.horizontal)
+            NavigationStack {
+                ZStack {
+                    Color(.systemBackground)
+                        .edgesIgnoringSafeArea(.all)
                     
-                    // Contenido principal
                     VStack {
+                        // Header
                         HStack {
-                            Image("Calli")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 100)
-                            
-                            DialogBoxView(message: question)
-                                .offset(y: -35)
+                            Image(systemName: isVocabQuestion ? "character.book.closed" : "magnifyingglass")
+                                .font(.title)
+                            Text(questionType)
+                                .font(.title2.bold())
                             Spacer()
+                            
+                            NavigationLink{
+                                AddNoteView()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "plus.circle")
+                                    Text("Add note")
+                                }
+                            }
+                            
                         }
+                        .padding(.horizontal)
                         
-                        // Opciones de respuesta
-                        ForEach(shuffledAnswers.indices, id: \.self) { i in
-                            AnswerButton(
-                                answer: shuffledAnswers[i],
-                                isSelected: selectedAnswer == shuffledAnswers[i],
-                                action: {
-                                    if !answered {
-                                        answered = true
-                                        selectedAnswer = shuffledAnswers[i]
+                        // Contenido principal
+                        VStack {
+                            HStack {
+                                Image("Calli")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 100)
+                                
+                                DialogBoxView(message: question)
+                                    .offset(y: -35)
+                                Spacer()
+                            }
+                            
+                            // Opciones de respuesta
+                            ForEach(shuffledAnswers.indices, id: \.self) { i in
+                                AnswerButton(
+                                    answer: shuffledAnswers[i],
+                                    isSelected: selectedAnswer == shuffledAnswers[i],
+                                    action: {
+                                        if !answered {
+                                            answered = true
+                                            selectedAnswer = shuffledAnswers[i]
+                                        }
+                                    }
+                                )
+                            }
+                            
+                            // Resultado
+                            if let selectedAnswer = selectedAnswer {
+                                VStack {
+                                    Text("Correct answer:")
+                                        .font(.headline)
+                                    Text(options.first(where: { $0.correct })?.answerText ?? "")
+                                        .bold()
+                                        .padding()
+                                    Button {
+                                        dismiss()
+                                    } label: {
+                                        Text("Continue reading")
+                                            .padding()
+                                            .frame(maxWidth: .infinity)
+                                            .background(mainColor)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(15)
+                                    }
+                                    NavigationLink{
+                                        TimeSummaryView(wordAmount: 159, minutes: 2, seconds: 39)
+                                    } label: {
+                                        Text("Check your time")
+                                            .foregroundStyle(mainColor)
                                     }
                                 }
-                            )
-                        }
-                        
-                        // Resultado
-                        if let selectedAnswer = selectedAnswer {
-                            VStack {
-                                Text("Respuesta correcta:")
-                                    .font(.headline)
-                                Text(options.first(where: { $0.correct })?.answerText ?? "")
-                                    .bold()
-                                    .padding()
-                                Button {
-                                    dismiss()
-                                } label: {
-                                    Text("Continuar leyendo")
-                                        .padding()
-                                        .frame(maxWidth: .infinity)
-                                        .background(mainColor)
-                                        .foregroundColor(.white)
-                                        .cornerRadius(15)
-                                }
-                               
+                                .padding()
                             }
-                            .padding()
                         }
+                        .padding()
+                        
+                        Spacer()
                     }
-                    .padding()
-                    
-                    Spacer()
                 }
-            }
+        }
+            
         }
 }
 

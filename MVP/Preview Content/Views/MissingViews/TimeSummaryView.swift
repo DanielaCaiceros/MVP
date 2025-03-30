@@ -22,7 +22,7 @@ struct TimeSummaryView: View {
             
             Spacer()
             
-            Text("You have read")
+            Text("You read")
                 .font(.title2)
             HStack{
                 Image(systemName: "book")
